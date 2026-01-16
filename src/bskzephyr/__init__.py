@@ -139,7 +139,7 @@ class BSKZephyrClient:
         groupID: str,
         deviceStatus: str | None = None,
         fanMode: FanMode | None = None,
-        fanSpeed: FanSpeed | None = None,
+        fanSpeed: int | FanSpeed | None = None,
         humidityBoost: int | None = None,
     ) -> Zephyr | None:
         body = {}
@@ -147,7 +147,9 @@ class BSKZephyrClient:
             body["deviceStatus"] = deviceStatus
         if fanMode:
             body["fanMode"] = fanMode
-        if fanSpeed:
+        if fanSpeed is not None:
+            if isinstance(fanSpeed, int):
+                fanSpeed = FanSpeed(self.massage_fan_speed(fanSpeed))
             body["fanSpeed"] = fanSpeed
         if humidityBoost is not None:  # allow 0
             body["humidityBoost"] = humidityBoost
@@ -164,6 +166,8 @@ class BSKZephyrClient:
                 raise_for_status=True,
             )
 
-            return Zephyr(**(await resp.json()))
+            device_data = await resp.json()
+            device_data["fanSpeed"] = self.massage_fan_speed(device_data["fanSpeed"])
+            return Zephyr(**device_data)
         except ClientResponseError as err:
             raise ZephyrException from err
